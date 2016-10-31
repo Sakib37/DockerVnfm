@@ -1,0 +1,34 @@
+group 'org.openbaton'
+version '1.0-SNAPSHOT'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:1.3.1.RELEASE")
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'spring-boot'
+
+repositories {
+    mavenCentral()
+    maven {
+        url "http://get.openbaton.org:8081/nexus/content/groups/public"
+    }
+}
+
+dependencies {
+    compile 'org.hibernate:hibernate-core:4.3.10.Final'
+    compile 'org.openbaton:vnfm-sdk-amqp:2.1.2'
+    compile 'org.openbaton:vim-int:2.1.2'
+    compile 'org.openbaton:vim-impl:2.1.2'
+    compile 'org.openbaton:sdk:2.1.2'
+}
+
+bootRepackage {
+    mainClass = 'org.openbaton.vnfm.DockerVnfm'
+}

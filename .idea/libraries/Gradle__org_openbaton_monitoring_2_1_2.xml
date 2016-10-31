@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.openbaton:monitoring:2.1.2">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.openbaton/monitoring/2.1.2/7d266bc8c1e4094d38c9377fef19122791ce6b0d/monitoring-2.1.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.openbaton/monitoring/2.1.2/7a7bceb6137769bc413c8a9742120cf9b1ef97e1/monitoring-2.1.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

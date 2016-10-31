@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.openbaton:vim-impl:2.1.2">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.openbaton/vim-impl/2.1.2/3cdc0e64d3506180803678d72b43286af23f063e/vim-impl-2.1.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.openbaton/vim-impl/2.1.2/7bc238a5e98402703d5440cf5434dbac80846813/vim-impl-2.1.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

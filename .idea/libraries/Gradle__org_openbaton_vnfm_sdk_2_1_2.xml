@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: org.openbaton:vnfm-sdk:2.1.2">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.openbaton/vnfm-sdk/2.1.2/1d2af9f0a798960b5fcd17f79514d43f95041318/vnfm-sdk-2.1.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.openbaton/vnfm-sdk/2.1.2/177336422e9f2b47e48be06d918d6f8b7a4014ad/vnfm-sdk-2.1.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
