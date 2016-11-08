@@ -32,3 +32,7 @@ dependencies {
 bootRepackage {
     mainClass = 'org.openbaton.vnfm.DockerVnfm'
 }
+
+project.ext{
+    mainClass = "org.openbaton.vnfm.DockerVnfm"
+}

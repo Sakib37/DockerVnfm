@@ -5,32 +5,35 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
 /**
  * Created by sakib on 10/30/16.
  */
-public class DockerRabbitPluginBroker extends RabbitPluginBroker {
+
+
+@Service
+public class DockerRabbitPluginBroker {
+
     @Autowired
     private ConfigurableApplicationContext context;
 
+    static Logger log = LoggerFactory.getLogger(org.openbaton.plugin.utils.RabbitPluginBroker.class);
 
-    @Override
-    public Object getVimDriverCaller(String type) {
-        return context.getBean("DockerVimCaller", type);
+    public Object getDockerVimCaller(String type) {
+        return context.getBean("dockerVimCaller", type);
     }
 
-    @Override
-    public Object getVimDriverCaller(String name, String type) {
-        return context.getBean("DockerVimCaller", name, type);
+    public Object getDockerVimCaller(String name, String type) {
+        return context.getBean("dockerVimCaller", name, type);
     }
 
-    @Override
-    public Object getVimDriverCaller(String name, String type, String managementPort) {
-        return context.getBean("DockerVimCaller", name, type, managementPort);
+    public Object getDockerVimCaller(String name, String type, String managementPort) {
+        return context.getBean("dockerVimCaller", name, type, managementPort);
     }
 
-    @Override
-    public Object getVimDriverCaller(
+    public Object getDockerVimCaller(
             String brokerIp,
             String username,
             String password,
@@ -38,11 +41,10 @@ public class DockerRabbitPluginBroker extends RabbitPluginBroker {
             String type,
             String managementPort) {
         return context.getBean(
-                "DockerVimCaller", brokerIp, username, password, port, type, managementPort);
+                "dockerVimCaller", brokerIp, username, password, port, type, managementPort);
     }
 
-    @Override
-    public Object getVimDriverCaller(
+    public Object getDockerVimCaller(
             String brokerIp,
             String username,
             String password,
@@ -51,12 +53,56 @@ public class DockerRabbitPluginBroker extends RabbitPluginBroker {
             String name,
             String managementPort) {
         return context.getBean(
-                "DockerVimCaller", brokerIp, username, password, port, type, name, managementPort);
+                "dockerVimCaller", brokerIp, username, password, port, type, name, managementPort);
     }
 
-    @Override
-    public Object getVimDriverCaller(
+    public Object getDockerVimCaller(
             String brokerIp, String username, String password, String type, String managementPort) {
-        return context.getBean("DockerVimCaller", brokerIp, username, password, type, managementPort);
+        return context.getBean("dockerVimCaller", brokerIp, username, password, type, managementPort);
+    }
+
+/*
+Monitoring plugin
+*/
+
+    public Object getMonitoringPluginCaller(String type) {
+        return context.getBean("monitoringPluginCaller", type);
+    }
+
+    public Object getMonitoringPluginCaller(String name, String type) {
+        return context.getBean("monitoringPluginCaller", name, type);
+    }
+
+    public Object getMonitoringPluginCaller(String name, String type, String managementPort) {
+        return context.getBean("monitoringPluginCaller", name, type, managementPort);
+    }
+
+    public Object getMonitoringPluginCaller(
+            String brokerIp,
+            String username,
+            String password,
+            int port,
+            String type,
+            String managementPort) {
+        return context.getBean(
+                "monitoringPluginCaller", brokerIp, username, password, port, type, managementPort);
+    }
+
+    public Object getMonitoringPluginCaller(
+            String brokerIp,
+            String username,
+            String password,
+            int port,
+            String type,
+            String name,
+            String managementPort) {
+        return context.getBean(
+                "monitoringPluginCaller", brokerIp, username, password, port, type, name, managementPort);
+    }
+
+    public Object getMonitoringPluginCaller(
+            String brokerIp, String username, String password, String type, String managementPort) {
+        return context.getBean(
+                "monitoringPluginCaller", brokerIp, username, password, type, managementPort);
     }
 }
