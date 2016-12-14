@@ -11,10 +11,11 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="DockerVnfm_main" />
     <orderEntry type="library" name="Gradle: org.hibernate:hibernate-core:4.3.10.Final" level="project" />
-    <orderEntry type="library" name="Gradle: org.openbaton:vnfm-sdk-amqp:2.1.2" level="project" />
+    <orderEntry type="library" name="Gradle: org.openbaton:vnfm-sdk-amqp:3.0.0" level="project" />
     <orderEntry type="library" name="Gradle: org.openbaton:vim-int:2.1.2" level="project" />
     <orderEntry type="library" name="Gradle: org.openbaton:vim-impl:2.1.2" level="project" />
     <orderEntry type="library" name="Gradle: org.openbaton:sdk:2.1.2" level="project" />
+    <orderEntry type="library" name="Gradle: com.google.googlejavaformat:google-java-format:1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.jboss.logging:jboss-logging:3.3.0.Final" level="project" />
     <orderEntry type="library" name="Gradle: org.jboss.logging:jboss-logging-annotations:1.2.0.Beta1" level="project" />
     <orderEntry type="library" name="Gradle: org.jboss.spec.javax.transaction:jboss-transaction-api_1.2_spec:1.0.0.Final" level="project" />
@@ -28,18 +29,19 @@
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-amqp:1.3.1.RELEASE" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-autoconfigure:1.3.1.RELEASE" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter-logging:1.3.1.RELEASE" level="project" />
-    <orderEntry type="library" name="Gradle: org.openbaton:vnfm-sdk:2.1.2" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework:spring-context:4.2.4.RELEASE" level="project" />
+    <orderEntry type="library" name="Gradle: org.openbaton:vnfm-sdk:3.0.0" level="project" />
     <orderEntry type="library" name="Gradle: org.openbaton:exception:2.1.2" level="project" />
     <orderEntry type="library" name="Gradle: org.openbaton:plugin:2.1.2" level="project" />
     <orderEntry type="library" name="Gradle: org.openbaton:monitoring:2.1.2" level="project" />
-    <orderEntry type="library" name="Gradle: org.openbaton:catalogue:2.1.2" level="project" />
     <orderEntry type="library" name="Gradle: org.openbaton:vim-drivers:2.1.2" level="project" />
     <orderEntry type="library" name="Gradle: org.slf4j:slf4j-api:1.7.13" level="project" />
     <orderEntry type="library" name="Gradle: net.minidev:json-smart:2.2" level="project" />
     <orderEntry type="library" name="Gradle: com.google.code.gson:gson:2.3.1" level="project" />
     <orderEntry type="library" name="Gradle: com.mashape.unirest:unirest-java:1.4.5" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.httpcomponents:httpclient:4.5.1" level="project" />
+    <orderEntry type="library" name="Gradle: com.google.guava:guava:19.0" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.jdt:org.eclipse.jdt.core:3.10.0" level="project" />
     <orderEntry type="library" name="Gradle: xml-apis:xml-apis:1.0.b2" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework:spring-core:4.2.4.RELEASE" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.boot:spring-boot-starter:1.3.1.RELEASE" level="project" />
@@ -53,13 +55,16 @@
     <orderEntry type="library" name="Gradle: org.springframework:spring-beans:4.2.4.RELEASE" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework:spring-expression:4.2.4.RELEASE" level="project" />
     <orderEntry type="library" name="Gradle: org.openbaton:utils:2.1.2" level="project" />
-    <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-annotations:2.6.4" level="project" />
     <orderEntry type="library" name="Gradle: net.minidev:accessors-smart:1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.httpcomponents:httpasyncclient:4.1.1" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.httpcomponents:httpmime:4.5.1" level="project" />
     <orderEntry type="library" name="Gradle: org.json:json:20140107" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.httpcomponents:httpcore:4.4.4" level="project" />
     <orderEntry type="library" name="Gradle: commons-codec:commons-codec:1.9" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.core:org.eclipse.core.resources:3.7.100" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.core:org.eclipse.core.runtime:3.7.0" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.core:org.eclipse.core.filesystem:1.3.100" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.text:org.eclipse.text:3.5.101" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.retry:spring-retry:1.1.2.RELEASE" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework.amqp:spring-amqp:1.5.2.RELEASE" level="project" />
     <orderEntry type="library" name="Gradle: org.springframework:spring-tx:4.2.4.RELEASE" level="project" />
@@ -71,8 +76,19 @@
     <orderEntry type="library" name="Gradle: aopalliance:aopalliance:1.0" level="project" />
     <orderEntry type="library" name="Gradle: org.ow2.asm:asm:5.0.3" level="project" />
     <orderEntry type="library" name="Gradle: org.apache.httpcomponents:httpcore-nio:4.4.4" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.core:org.eclipse.core.expressions:3.4.300" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.osgi:org.eclipse.osgi:3.7.1" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.equinox:org.eclipse.equinox.common:3.6.0" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.core:org.eclipse.core.jobs:3.5.100" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.equinox:org.eclipse.equinox.registry:3.5.101" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.equinox:org.eclipse.equinox.preferences:3.4.1" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.core:org.eclipse.core.contenttype:3.4.100" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.equinox:org.eclipse.equinox.app:1.3.100" level="project" />
+    <orderEntry type="library" name="Gradle: org.eclipse.core:org.eclipse.core.commands:3.6.0" level="project" />
     <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-databind:2.6.4" level="project" />
+    <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-annotations:2.6.4" level="project" />
     <orderEntry type="library" name="Gradle: com.fasterxml.jackson.core:jackson-core:2.6.4" level="project" />
+    <orderEntry type="library" name="Gradle: org.openbaton:catalogue:3.0.0" level="project" />
   </component>
   <component name="TestModuleProperties" production-module="DockerVnfm_main" />
 </module>
