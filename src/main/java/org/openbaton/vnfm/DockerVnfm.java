@@ -2,22 +2,28 @@ package org.openbaton.vnfm;
 
 import java.io.IOException;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.openbaton.catalogue.mano.descriptor.InternalVirtualLink;
 import org.openbaton.catalogue.mano.descriptor.VNFComponent;
+import org.openbaton.catalogue.mano.descriptor.VirtualDeploymentUnit;
 import org.openbaton.catalogue.mano.descriptor.VirtualNetworkFunctionDescriptor;
 import org.openbaton.catalogue.mano.record.VNFCInstance;
 import org.openbaton.catalogue.mano.record.VNFRecordDependency;
 import org.openbaton.catalogue.mano.record.VirtualNetworkFunctionRecord;
 import org.openbaton.catalogue.nfvo.Action;
+import org.openbaton.catalogue.nfvo.ConfigurationParameter;
 import org.openbaton.catalogue.nfvo.Script;
+import org.openbaton.catalogue.nfvo.Server;
 import org.openbaton.catalogue.nfvo.VimInstance;
 import org.openbaton.catalogue.nfvo.messages.Interfaces.NFVMessage;
-import org.openbaton.catalogue.nfvo.messages.OrVnfmGenericMessage;
 import org.openbaton.catalogue.nfvo.messages.OrVnfmInstantiateMessage;
-import org.openbaton.catalogue.nfvo.messages.OrVnfmStartStopMessage;
 import org.openbaton.common.vnfm_sdk.VnfmHelper;
 import org.openbaton.common.vnfm_sdk.amqp.AbstractVnfmSpringAmqp;
 import org.openbaton.common.vnfm_sdk.exception.BadFormatException;
@@ -92,18 +98,12 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
   protected synchronized void onAction(NFVMessage message)
       throws NotFoundException, BadFormatException {
     VirtualNetworkFunctionRecord virtualNetworkFunctionRecord = null;
+    VimInstance dockerVimInstance = null;
     NFVMessage nfvMessage = null;
-    OrVnfmGenericMessage orVnfmGenericMessage = null;
-    OrVnfmStartStopMessage orVnfmStartStopMessage = null;
-    System.out.println(message.getAction());
-    OrVnfmInstantiateMessage orVnfmInstantiateMessage = (OrVnfmInstantiateMessage) message;
-    System.out.println(orVnfmInstantiateMessage);
-    System.out.println("Virtual Link Record: " + orVnfmInstantiateMessage.getVlrs());
-    System.out.println("VNFD : " + orVnfmInstantiateMessage.getVnfd());
-    System.out.println("VimInstance : " + orVnfmInstantiateMessage.getVimInstances());
-    System.out.println("Keys: " + orVnfmInstantiateMessage.getKeys());
-    System.out.println("VLRS : " + orVnfmInstantiateMessage.getVlrs());
-    System.out.println("Vnf Package: " + orVnfmInstantiateMessage.getVnfPackage());
+    /*    OrVnfmGenericMessage orVnfmGenericMessage = null;
+    OrVnfmStartStopMessage orVnfmStartStopMessage = null;*/
+
+    System.out.println("Message Action: " + message.getAction());
     try {
       switch (message.getAction()) {
         case INSTANTIATE:
@@ -111,36 +111,90 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
               "Received NFVO Message: "
                   + "Instantiating VNFD "
                   + ((OrVnfmInstantiateMessage) message).getVnfd().getName());
-          //OrVnfmInstantiateMessage orVnfmInstantiateMessage = (OrVnfmInstantiateMessage) message;
-          orVnfmInstantiateMessage = (OrVnfmInstantiateMessage) message;
+          OrVnfmInstantiateMessage orVnfmInstantiateMessage = (OrVnfmInstantiateMessage) message;
           VirtualNetworkFunctionDescriptor vnfd = orVnfmInstantiateMessage.getVnfd();
+
           Map<String, Collection<VimInstance>> vimInstances =
               orVnfmInstantiateMessage.getVimInstances();
-          virtualNetworkFunctionRecord =
-              createVirtualNetworkFunctionRecord(
-                  orVnfmInstantiateMessage.getVnfd(),
-                  orVnfmInstantiateMessage.getVnfdf().getFlavour_key(),
-                  orVnfmInstantiateMessage.getVlrs(),
-                  orVnfmInstantiateMessage.getExtension(),
-                  vimInstances);
-          if (orVnfmInstantiateMessage.getVnfPackage() != null) {
-            if (orVnfmInstantiateMessage.getVnfPackage().getScriptsLink() != null)
-              virtualNetworkFunctionRecord =
-                  instantiate(
-                      virtualNetworkFunctionRecord,
-                      orVnfmInstantiateMessage.getVnfPackage().getScriptsLink(),
-                      vimInstances);
-            else
-              virtualNetworkFunctionRecord =
-                  instantiate(
-                      virtualNetworkFunctionRecord,
-                      orVnfmInstantiateMessage.getVnfPackage().getScripts(),
-                      vimInstances);
-          } else {
-            virtualNetworkFunctionRecord =
-                instantiate(virtualNetworkFunctionRecord, null, vimInstances);
+
+          for (String s : vimInstances.keySet()) {
+            for (int i = 0; i < vimInstances.get(s).toArray().length; i++) {
+              System.out.println(vimInstances.get(s).toArray()[i].getClass().getName());
+              System.out.println(((VimInstance) vimInstances.get(s).toArray()[i]).getName());
+              if (((VimInstance) vimInstances.get(s).toArray()[i]).getName().equals("docker")) {
+                dockerVimInstance = (VimInstance) vimInstances.get(s).toArray()[i];
+                break;
+              }
+            }
           }
-          String serverName = orVnfmInstantiateMessage.getVnfd().getName();
+          if (dockerVimInstance != null) {
+            virtualNetworkFunctionRecord =
+                createVirtualNetworkFunctionRecord(
+                    orVnfmInstantiateMessage.getVnfd(),
+                    orVnfmInstantiateMessage.getVnfdf().getFlavour_key(),
+                    orVnfmInstantiateMessage.getVlrs(),
+                    orVnfmInstantiateMessage.getExtension(),
+                    vimInstances);
+            if (orVnfmInstantiateMessage.getVnfPackage() != null) {
+              if (orVnfmInstantiateMessage.getVnfPackage().getScriptsLink() != null)
+                virtualNetworkFunctionRecord =
+                    instantiate(
+                        virtualNetworkFunctionRecord,
+                        orVnfmInstantiateMessage.getVnfPackage().getScriptsLink(),
+                        vimInstances);
+              else
+                virtualNetworkFunctionRecord =
+                    instantiate(
+                        virtualNetworkFunctionRecord,
+                        orVnfmInstantiateMessage.getVnfPackage().getScripts(),
+                        vimInstances);
+            } else {
+              virtualNetworkFunctionRecord =
+                  instantiate(virtualNetworkFunctionRecord, null, vimInstances);
+            }
+
+            String serverName = vnfd.getName();
+            VirtualDeploymentUnit vdu = (VirtualDeploymentUnit) vnfd.getVdu().iterator().next();
+            String serverImage = vdu.getVm_image().iterator().next();
+
+            Iterator<ConfigurationParameter> configIterator =
+                virtualNetworkFunctionRecord
+                    .getConfigurations()
+                    .getConfigurationParameters()
+                    .iterator();
+            Map<String, String> configParameters = new HashMap<>();
+            while (configIterator.hasNext()) {
+              ConfigurationParameter currentParam = configIterator.next();
+              configParameters.put(currentParam.getConfKey(), currentParam.getValue());
+            }
+            List<String> portsToExpose = getExposedPorts(configParameters);
+            List<String> environemntVariables = getEnvironmentVariables(configParameters);
+
+            log.info("Creating server for VNFD " + serverName);
+            Server server =
+                client.launchInstance(
+                    dockerVimInstance,
+                    serverName,
+                    serverImage,
+                    portsToExpose,
+                    environemntVariables);
+            log.info("Server for VNFD " + serverName + " is successfully created");
+
+            log.info("Adding Server " + serverName + " with virtual links");
+            Iterator iterator = orVnfmInstantiateMessage.getVnfd().getVirtual_link().iterator();
+            while (iterator.hasNext()) {
+              String netName = ((InternalVirtualLink) iterator.next()).getName();
+              System.out.println(netName);
+              try {
+                log.info("Creating network " + netName);
+                client.createDockerNetwork(dockerVimInstance, netName);
+              } catch (Exception ignore) {
+                log.info("Network " + netName + " is already available");
+              }
+              client.connectContainerToNetwork(dockerVimInstance, server.getId(), netName);
+            }
+            log.info("Successfully connected server" + serverName + " with all virtual links");
+          }
 
           nfvMessage = VnfmUtils.getNfvMessage(Action.INSTANTIATE, virtualNetworkFunctionRecord);
           log.info("Instantiated vnfd " + vnfd.getName());
@@ -171,6 +225,25 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
       }
       vnfmHelper.sendToNfvo(VnfmUtils.getNfvErrorMessage(virtualNetworkFunctionRecord, e, nsrId));
     }
+  }
+
+  private List<String> getEnvironmentVariables(Map<String, String> configParameters) {
+    List<String> environmentVariables = new ArrayList<>();
+    for (String s : configParameters.keySet()) {
+      String currentVariable = s + "=" + configParameters.get(s);
+      environmentVariables.add(currentVariable);
+    }
+    return environmentVariables;
+  }
+
+  private List<String> getExposedPorts(Map<String, String> configParameters) {
+    List<String> exposedPorts = new ArrayList<>();
+    for (String s : configParameters.keySet()) {
+      if (s.toLowerCase().indexOf("port") >= 0) {
+        exposedPorts.add(configParameters.get(s));
+      }
+    }
+    return exposedPorts;
   }
 
   /**
