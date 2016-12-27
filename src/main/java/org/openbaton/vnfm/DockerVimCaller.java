@@ -579,7 +579,7 @@ public class DockerVimCaller extends VimDriver {
     params.add(networkName);
     Serializable res;
     try {
-      res = pluginCaller.executeRPC("createNetwork", params, Network.class);
+      res = pluginCaller.executeRPC("createDockerNetwork", params, Network.class);
     } catch (IOException | PluginException | InterruptedException e) {
       throw new VimDriverException(e.getMessage());
     }
@@ -634,17 +634,19 @@ public class DockerVimCaller extends VimDriver {
     }
   }
 
-  public void copyArchiveToContainer(
+  public boolean copyArchiveToContainer(
       VimInstance vimInstance, String containerId, String pathToarchive) throws Exception {
     List<Serializable> params = new LinkedList<>();
     params.add(vimInstance);
     params.add(containerId);
     params.add(pathToarchive);
+    boolean res;
     try {
-      pluginCaller.executeRPC("copyArchiveToContainer", params, null);
+      res = (boolean) pluginCaller.executeRPC("copyArchiveToContainer", params, boolean.class);
     } catch (IOException | PluginException | InterruptedException e) {
       throw new Exception(e.getMessage());
     }
+    return res;
   }
 
   public boolean execScript(VimInstance vimInstance, String containerId, String... script)
