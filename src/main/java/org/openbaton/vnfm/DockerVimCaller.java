@@ -606,7 +606,10 @@ public class DockerVimCaller extends VimDriver {
     params.add(containerId);
     params.add(networkId);
     try {
-      pluginCaller.executeRPC("disconnectContainerFromNetwork", params, null);
+      pluginCaller.executeRPC(
+              "disconnectContainerFromNetwork",
+              params,
+              null);
     } catch (IOException | PluginException | InterruptedException e) {
       throw new VimDriverException(e.getMessage());
     }
@@ -635,21 +638,48 @@ public class DockerVimCaller extends VimDriver {
   }
 
   public boolean copyArchiveToContainer(
-      VimInstance vimInstance, String containerId, String pathToarchive) throws Exception {
+      VimInstance vimInstance,
+      String containerId,
+      String pathToarchive) throws Exception {
     List<Serializable> params = new LinkedList<>();
     params.add(vimInstance);
     params.add(containerId);
     params.add(pathToarchive);
     boolean res;
     try {
-      res = (boolean) pluginCaller.executeRPC("copyArchiveToContainer", params, boolean.class);
+      res = (boolean) pluginCaller.executeRPC(
+              "copyArchiveToContainer",
+              params,
+              boolean.class);
     } catch (IOException | PluginException | InterruptedException e) {
       throw new Exception(e.getMessage());
     }
     return res;
   }
 
-  public boolean execScript(VimInstance vimInstance, String containerId, String... script)
+  public boolean copyArchiveFromContainer(
+          VimInstance vimInstance,
+          String containerId,
+          String pathToarchive,
+          String hostPath) throws Exception {
+    List<Serializable> params = new LinkedList<>();
+    params.add(vimInstance);
+    params.add(containerId);
+    params.add(pathToarchive);
+    params.add(hostPath);
+    boolean res;
+    try {
+      res = (boolean) pluginCaller.executeRPC(
+              "copyArchiveFromContainer",
+              params,
+              boolean.class);
+    } catch (IOException | PluginException | InterruptedException e) {
+      throw new Exception(e.getMessage());
+    }
+    return res;
+  }
+
+  public boolean execCommand(VimInstance vimInstance, String containerId, String... script)
       throws Exception {
     List<Serializable> params = new LinkedList<>();
     params.add(vimInstance);
@@ -657,10 +687,22 @@ public class DockerVimCaller extends VimDriver {
     params.add(script);
     boolean result;
     try {
-      result = (boolean) pluginCaller.executeRPC("execScript", params, boolean.class);
+      result = (boolean) pluginCaller.executeRPC("execCommand", params, boolean.class);
     } catch (IOException | PluginException | InterruptedException e) {
       throw new Exception(e.getMessage());
     }
     return result;
+  }
+
+  public void restartServer(VimInstance vimInstance, String serverId)
+          throws Exception{
+    List<Serializable> params = new LinkedList<>();
+    params.add(vimInstance);
+    params.add(serverId);
+    try {
+      pluginCaller.executeRPC("restartServer", params, null);
+    } catch (IOException | PluginException | InterruptedException e) {
+      throw new Exception(e.getMessage());
+    }
   }
 }

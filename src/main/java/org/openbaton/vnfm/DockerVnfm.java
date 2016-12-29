@@ -119,15 +119,7 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
 
           Map<String, Collection<VimInstance>> vimInstances =
               orVnfmInstantiateMessage.getVimInstances();
-
-          for (String s : vimInstances.keySet()) {
-            for (int i = 0; i < vimInstances.get(s).toArray().length; i++) {
-              if (((VimInstance) vimInstances.get(s).toArray()[i]).getName().equals("docker")) {
-                dockerVimInstance = (VimInstance) vimInstances.get(s).toArray()[i];
-                break;
-              }
-            }
-          }
+          dockerVimInstance =getDockerVimInstance(orVnfmInstantiateMessage);
           if (dockerVimInstance != null) {
             virtualNetworkFunctionRecord =
                 createVirtualNetworkFunctionRecord(
@@ -172,32 +164,38 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
             List<String> environemntVariables = getEnvironmentVariables(configParameters);
 
             log.info("Creating server for VNFD " + serverName);
-            Server server =
-                client.launchInstance(
-                    dockerVimInstance,
-                    serverName,
-                    serverImage,
-                    portsToExpose,
-                    environemntVariables);
-            log.info("Server for VNFD " + serverName + " is successfully created");
+            Server server = null;
+            try {
+              server = client.launchInstance(
+                              dockerVimInstance,
+                              serverName,
+                              serverImage,
+                              portsToExpose,
+                              environemntVariables);
+              log.info("Server for VNFD " + serverName + " is successfully created");
+            }catch (Exception e){
+              log.debug("Failed to create server " + serverName);
+              log.debug(e.toString());
+            }
 
             // Copying scripts to server
             log.info("Copying scripts to server " + serverName);
-            File existingDuplicateDirectory =
-                new File("/tmp/openbaton/dockerVNFM" + "/" + serverName);
-            FileSystemUtils.deleteRecursively(existingDuplicateDirectory);
+            String vnfmDirectory = "/tmp/openbaton/dockerVNFM/" + serverName + "/";
+            File pathToVnfm =
+                new File("/tmp/openbaton/dockerVNFM/" + serverName);
+            FileSystemUtils.deleteRecursively(pathToVnfm);
 
             prepareScript(orVnfmInstantiateMessage.getVnfPackage(), serverName);
             try {
               client.copyArchiveToContainer(dockerVimInstance,
                       server.getId(),
-                      "/tmp/openbaton/dockerVNFM" + "/" + serverName + "/" + "scripts");
+                      vnfmDirectory + "scripts");
               log.info("Successfully copied scripts to '/scripts' in server " + serverName);
             } catch (Exception e) {
-              log.info("Failed to copy scripts to server" + serverName);
+              log.info("Failed to copy scripts to server " + serverName);
               log.debug(e.toString());
             }
-            FileSystemUtils.deleteRecursively(existingDuplicateDirectory);
+            FileSystemUtils.deleteRecursively(new File(vnfmDirectory+ "scripts"));
 
             // Adding server to the networks
             log.info("Adding Server " + serverName + " with virtual links");
@@ -215,24 +213,24 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
             log.info("Successfully connected server " + serverName + " with all virtual links");
 
             log.info("Executing scripts for Lifecycle event INSTANTIATE");
-            executeScriptsForEvent(virtualNetworkFunctionRecord, Event.INSTANTIATE);
+            executeScriptsForEvent(virtualNetworkFunctionRecord, Event.INSTANTIATE, message);
 
           }
           nfvMessage = VnfmUtils.getNfvMessage(Action.INSTANTIATE, virtualNetworkFunctionRecord);
-          log.info("Instantiated vnfd " + vnfd.getName());
+          log.info("Instantiated vnfr " + vnfd.getName());
           break;
         case MODIFY:
-          log.info(
+          /*log.info(
               "Received NFVO Message: "
                   + message.getAction()
                   + " for VNFR "
                   + ((OrVnfmGenericMessage) message).getVnfr().getName()
                   + " and following vnfrDep: \n"
-                  + ((OrVnfmGenericMessage) message).getVnfrd());
+                  + ((OrVnfmGenericMessage) message).getVnfrd());*/
           orVnfmGenericMessage = (OrVnfmGenericMessage) message;
           virtualNetworkFunctionRecord = orVnfmGenericMessage.getVnfr();
           VNFRecordDependency vnfrDependency = orVnfmGenericMessage.getVnfrd();
-          nsrId = orVnfmStartStopMessage.getVirtualNetworkFunctionRecord().getParent_ns_id();
+          nsrId = orVnfmGenericMessage.getVnfr().getParent_ns_id();
           System.out.println("VNFR Dependency : " + vnfrDependency);
 
           for (Map.Entry<String, DependencyParameters> entry :
@@ -262,22 +260,24 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
             break;
           }
         case START:
-          log.info(
+          /*log.info(
               "Received NFVO Message: "
                   + message.getAction()
                   + " for VNFR "
                   + ((OrVnfmStartStopMessage) message).getVirtualNetworkFunctionRecord().getName()
                   + " and following vnfrDep: \n"
-                  + ((OrVnfmStartStopMessage) message).getVnfrd());
-          orVnfmStartStopMessage = (OrVnfmStartStopMessage) message;
+                  + ((OrVnfmStartStopMessage) message).getVnfrd());*/
+          orVnfmInstantiateMessage = (OrVnfmInstantiateMessage) message;
+          vnfd = orVnfmInstantiateMessage.getVnfd();
           virtualNetworkFunctionRecord = orVnfmStartStopMessage.getVirtualNetworkFunctionRecord();
-          nsrId = orVnfmStartStopMessage.getVirtualNetworkFunctionRecord().getParent_ns_id();
 
-          log.info("After start of " + virtualNetworkFunctionRecord.getName() + ":\n");
+          log.info("Executing scripts for Lifecycle event START");
+          executeScriptsForEvent(virtualNetworkFunctionRecord, Event.START, message);
+          log.info("Started vnfr " + vnfd.getName());
 
           nfvMessage =
-              VnfmUtils.getNfvMessage(
-                  Action.START, start(orVnfmStartStopMessage.getVirtualNetworkFunctionRecord()));
+                  VnfmUtils.getNfvMessage(
+                          Action.START, start(orVnfmStartStopMessage.getVirtualNetworkFunctionRecord()));
           break;
         case RELEASE_RESOURCES:
           log.info(
@@ -328,49 +328,36 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
   }
 
   public Iterable<String> executeScriptsForEvent(
-          VirtualNetworkFunctionRecord virtualNetworkFunctionRecord, Event event)
-          throws Exception { //TODO make it parallel
-    Map<String, String> env = getMap(virtualNetworkFunctionRecord);
+          VirtualNetworkFunctionRecord virtualNetworkFunctionRecord,
+          Event event,
+          NFVMessage message)
+          throws Exception {
     Collection<String> res = new ArrayList<>();
+    String vnfrName = virtualNetworkFunctionRecord.getName();
+    OrVnfmInstantiateMessage orVnfmInstantiateMessage = (OrVnfmInstantiateMessage) message;
+    VimInstance dockerVimInstance = getDockerVimInstance(orVnfmInstantiateMessage);
     LifecycleEvent le =
             VnfmUtils.getLifecycleEvent(virtualNetworkFunctionRecord.getLifecycle_event(), event);
 
     if (le != null) {
-      log.trace(
+      log.info(
               "The number of scripts for "
-                      + virtualNetworkFunctionRecord.getName()
+                      + vnfrName
                       + " are: "
                       + le.getLifecycle_events());
+      log.info("Be patience, executing scripts take time depending on the task done by the script");
       for (String script : le.getLifecycle_events()) {
-        System.out.println("Script for event " + event + script);
-        log.info(
-                "Sending script: "
+        log.info("Executing script '"
                         + script
-                        + " to VirtualNetworkFunctionRecord: "
+                        + "' in VirtualNetworkFunctionRecord: "
                         + virtualNetworkFunctionRecord.getName());
-        for (VirtualDeploymentUnit vdu : virtualNetworkFunctionRecord.getVdu()) {
-          for (VNFCInstance vnfcInstance : vdu.getVnfc_instance()) {
-
-            Map<String, String> tempEnv = new HashMap<>();
-            for (Ip ip : vnfcInstance.getIps()) {
-              log.debug("Adding net: " + ip.getNetName() + " with value: " + ip.getIp());
-              tempEnv.put(ip.getNetName(), ip.getIp());
-            }
-            log.debug("adding floatingIp: " + vnfcInstance.getFloatingIps());
-            for (Ip fip : vnfcInstance.getFloatingIps()) {
-              tempEnv.put(fip.getNetName() + "_floatingIp", fip.getIp());
-            }
-
-            tempEnv.put("hostname", vnfcInstance.getHostname());
-            tempEnv = modifyUnsafeEnvVarNames(tempEnv);
-            env.putAll(tempEnv);
-            log.info("Environment Variables are: " + env);
-
-
-            for (String key : tempEnv.keySet()) {
-              env.remove(key);
-            }
-          }
+        try {
+          String scriptLocation = "/scripts/" + script;
+          client.execCommand(dockerVimInstance, vnfrName, scriptLocation);
+          log.info("Script " + script + "Successfully executed");
+        } catch (Exception e){
+          log.debug("Error occured while executing " + script + "on VNFC" + vnfrName);
+          log.debug(e.toString());
         }
       }
     }
@@ -429,7 +416,6 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
       e.printStackTrace();
     }
     if (exitStatus == 0) {
-      System.out.println("Exit status in get script : " + exitStatus);
       log.info("Successfully fetched git repository");
     } else log.error("Could not fetch git repository");
   }
@@ -465,6 +451,22 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     }
     res = modifyUnsafeEnvVarNames(res);
     return res;
+  }
+
+  private VimInstance getDockerVimInstance(OrVnfmInstantiateMessage orVnfmInstantiateMessage){
+    VimInstance dockerVimInstance = null;
+    Map<String, Collection<VimInstance>> vimInstances =
+            orVnfmInstantiateMessage.getVimInstances();
+
+    for (String s : vimInstances.keySet()) {
+      for (int i = 0; i < vimInstances.get(s).toArray().length; i++) {
+        if (((VimInstance) vimInstances.get(s).toArray()[i]).getName().equals("docker")) {
+          dockerVimInstance = (VimInstance) vimInstances.get(s).toArray()[i];
+          break;
+        }
+      }
+    }
+    return dockerVimInstance;
   }
 
   private Map<String, String> modifyUnsafeEnvVarNames(Map<String, String> env) {
@@ -561,7 +563,6 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
   @Override
   public VirtualNetworkFunctionRecord terminate(
       VirtualNetworkFunctionRecord virtualNetworkFunctionRecord) throws Exception {
-
     return virtualNetworkFunctionRecord;
   }
 
