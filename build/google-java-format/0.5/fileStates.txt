@@ -1,3 +1,0 @@
-src/main/java/org/openbaton/vnfm/DockerVnfm.java,1482797435000000000,22155,FORMATTED
-src/main/java/org/openbaton/vnfm/DockerVimCaller.java,1482346030000000000,22302,FORMATTED
-src/main/java/org/openbaton/vnfm/DockerRabbitPluginBroker.java,1481683020000000000,3175,FORMATTED
