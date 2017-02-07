@@ -683,11 +683,13 @@ public class DockerVimCaller extends VimDriver {
     return res;
   }
 
-  public boolean execCommand(VimInstance vimInstance, String containerId, String... script)
+  public boolean execCommand(
+      VimInstance vimInstance, String containerId, Boolean detach, String... script)
       throws Exception {
     List<Serializable> params = new LinkedList<>();
     params.add(vimInstance);
     params.add(containerId);
+    params.add(detach);
     params.add(script);
     boolean result;
     try {

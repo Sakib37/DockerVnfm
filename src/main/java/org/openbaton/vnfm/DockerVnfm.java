@@ -9,11 +9,9 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -39,13 +37,11 @@ import org.openbaton.catalogue.nfvo.messages.Interfaces.NFVMessage;
 import org.openbaton.catalogue.nfvo.messages.OrVnfmGenericMessage;
 import org.openbaton.catalogue.nfvo.messages.OrVnfmInstantiateMessage;
 import org.openbaton.catalogue.nfvo.messages.OrVnfmStartStopMessage;
-import org.openbaton.common.vnfm_sdk.VnfmHelper;
 import org.openbaton.common.vnfm_sdk.amqp.AbstractVnfmSpringAmqp;
 import org.openbaton.common.vnfm_sdk.exception.BadFormatException;
 import org.openbaton.common.vnfm_sdk.exception.NotFoundException;
 import org.openbaton.common.vnfm_sdk.exception.VnfmSdkException;
 import org.openbaton.common.vnfm_sdk.utils.VnfmUtils;
-import org.openbaton.nfvo.vim_interfaces.resource_management.ResourceManagement;
 import org.openbaton.plugin.utils.PluginStartup;
 import org.openbaton.vnfm.utils.DockerRabbitPluginBroker;
 import org.openbaton.vnfm.utils.DockerVimCaller;
@@ -60,13 +56,7 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
 
   private Map<String, NetworkService> networkServiceMap;
 
-  @Autowired private VnfmHelper vnfmHelper;
-
   @Autowired private ConfigurableApplicationContext context;
-
-  private ResourceManagement resourceManagement;
-
-  private Set<PosixFilePermission> permissions;
 
   private DockerVimCaller client;
   private VimInstance dockerVimInstance;
@@ -107,6 +97,11 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     networkServiceMap = new HashMap<>();
   }
 
+  /**
+   * Manges the life cycle of VNF
+   *
+   * @param message = NFVMessage from NFVO for a VNFD
+   */
   @Override
   protected synchronized void onAction(NFVMessage message)
       throws NotFoundException, BadFormatException {
@@ -218,26 +213,6 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
               log.debug(e.getMessage());
             }
 
-            /*// Getting default options from 'default_options' file and set them as ENV variable
-            // This is not helpful now as docker do not support set environment variable after creation
-            File pathToVnfmScripts =
-                new File("/tmp/openbaton/dockerVNFM" + "/" + vnfd.getName() + "/" + "scripts/");
-            File[] scripts = pathToVnfmScripts.listFiles();
-            List<String> defaultEnvVariables;
-            for (File file : scripts) {
-              if (file.getName().toLowerCase().contains("default_options")) {
-                defaultEnvVariables = getEnvironmentVariablesFromFile(file.getAbsolutePath());
-                try {
-                  client.setEnvironmentVariable(
-                      dockerVimInstance, vnfd.getName(), defaultEnvVariables);
-                  log.info("Default ENV variables from default_options file is set");
-                } catch (Exception e) {
-                  log.debug("Failed to set ENV variables from default_options file");
-                  log.debug(e.getMessage());
-                }
-              }
-            }*/
-
             // Adding server to the networks
             log.info("Adding Server " + vnfd.getName() + " with virtual links");
             Iterator iterator = orVnfmInstantiateMessage.getVnfd().getVirtual_link().iterator();
@@ -255,7 +230,7 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
 
             log.info("Executing scripts for Lifecycle event INSTANTIATE");
             executeScriptsForEvent(
-                virtualNetworkFunctionRecord, Event.INSTANTIATE, dockerVimInstance);
+                virtualNetworkFunctionRecord, Event.INSTANTIATE, false, dockerVimInstance);
             nfvMessage = VnfmUtils.getNfvMessage(Action.INSTANTIATE, virtualNetworkFunctionRecord);
             log.info("Instantiated vnfr " + vnfd.getName());
           } else {
@@ -304,7 +279,11 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
           }
 
           executeScriptsForEvent(
-              virtualNetworkFunctionRecord, Event.CONFIGURE, vnfrDependency, dockerVimInstance);
+              virtualNetworkFunctionRecord,
+              Event.CONFIGURE,
+              false,
+              vnfrDependency,
+              dockerVimInstance);
 
           networkService.setVnfStatus(virtualNetworkFunctionRecord.getName(), "modified");
           nfvMessage =
@@ -342,7 +321,8 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
 
           nsrId = virtualNetworkFunctionRecord.getParent_ns_id();
           log.info("Executing scripts for Lifecycle event START");
-          executeScriptsForEvent(virtualNetworkFunctionRecord, Event.START, dockerVimInstance);
+          executeScriptsForEvent(
+              virtualNetworkFunctionRecord, Event.START, true, dockerVimInstance);
           log.info("Started vnfr " + virtualNetworkFunctionRecord.getName());
 
           nfvMessage = VnfmUtils.getNfvMessage(Action.START, start(virtualNetworkFunctionRecord));
@@ -356,21 +336,19 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
 
           orVnfmGenericMessage = (OrVnfmGenericMessage) message;
           virtualNetworkFunctionRecord = orVnfmGenericMessage.getVnfr();
-          //System.out.println("VNFR : " + virtualNetworkFunctionRecord);
           networkServiceMap.remove(virtualNetworkFunctionRecord.getParent_ns_id());
 
           // Removing the server
           vnfrName = virtualNetworkFunctionRecord.getName();
-          /*File pathToVnfm =
-                  new File("/tmp/openbaton/dockerVNFM/" + vnfrName);
-          FileSystemUtils.deleteRecursively(pathToVnfm);*/
+          File pathToVnfm = new File("/tmp/openbaton/dockerVNFM/" + vnfrName);
+          FileSystemUtils.deleteRecursively(pathToVnfm);
           client.deleteServerByIdAndWait(dockerVimInstance, vnfrName);
           Iterator<InternalVirtualLink> virtualLinks =
               virtualNetworkFunctionRecord.getVirtual_link().iterator();
           // Trying to remove networks if no more server attached
           while (virtualLinks.hasNext()) {
             InternalVirtualLink internalVirtualLink = virtualLinks.next();
-            boolean res = false;
+            boolean res;
             try {
               res = client.deleteNetwork(dockerVimInstance, internalVirtualLink.getName());
               if (res) {
@@ -415,6 +393,14 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     }
   }
 
+  /**
+   * Updates value of dependency parameters using the value of environment variables (from
+   * "/tmp/openbaton/dockerVNFM/VNFD_NAME/runTimeEnvironment" file)
+   *
+   * @params sourceEnvParameter = environment variables map of VNFR
+   * @params parameters = dependency paramters map
+   * @retrun a filtered map of dependencies
+   */
   private Map<String, String> organizeDependencies(
       Map<String, String> parameters, Map<String, String> sourceEnvParameter) {
     for (String s : parameters.keySet()) {
@@ -432,7 +418,7 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
    * Get a NetworkService object from the networkServiceMap. If it does not contain the requested
    * NetworkService yet, create and add it.
    *
-   * @param id
+   * @param id = ID of the Network Service
    * @return the requested NetworkService
    */
   private synchronized NetworkService getNetworkService(String id) {
@@ -445,9 +431,20 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     }
   }
 
+  /**
+   * Execute scripts on VNFC for lifecycle event
+   *
+   * @param dockerVimInstance = VimInstance for docker
+   * @param isDetachModeEabled = Boolean defines scripts should be running in detached or attached
+   *     mode
+   * @param virtualNetworkFunctionRecord = VirtualNetworkFunctionRecord of VNFR
+   * @param event = Current Lifecycle event of the VNFR
+   * @return Collection<String> containing the output generated by the script
+   */
   public Iterable<String> executeScriptsForEvent(
       VirtualNetworkFunctionRecord virtualNetworkFunctionRecord,
       Event event,
+      Boolean isDetachModeEabled,
       VimInstance dockerVimInstance)
       throws Exception {
     Map<String, String> enVariables = getMap(virtualNetworkFunctionRecord);
@@ -485,26 +482,27 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
                     + "' in network '"
                     + s
                     + "' is '"
-                    + ips.get(s).iterator().next());
+                    + ips.get(s).iterator().next()
+                    + "'");
             tempEnvMap.put(s, ips.get(s).iterator().next());
           }
         }
 
         tempEnvMap = modifyUnsafeEnvVarNames(tempEnvMap);
         for (String s : tempEnvMap.keySet()) {
-          env.add(s + "=" + tempEnvMap.get(s));
+          if (!env.contains(s + "=" + tempEnvMap.get(s))) {
+            env.add(s + "=" + tempEnvMap.get(s));
+          }
         }
         log.info("Environment Variables are: " + env);
         writeRunTimeEnvToFile(vnfrName, env);
         // Prepare the script with runtime environment variables
         prepareScriptWithRunTimeEnv(vnfrName, scriptPath);
         client.copyArchiveToContainer(dockerVimInstance, vnfrName, scriptPath, "/scripts/");
-        client.setEnvironmentVariable(dockerVimInstance, vnfrName, env);
-        //Thread.sleep(10);
 
         try {
           String scriptLocation = "/scripts/" + script;
-          client.execCommand(dockerVimInstance, vnfrName, scriptLocation);
+          client.execCommand(dockerVimInstance, vnfrName, isDetachModeEabled, scriptLocation);
           log.info("Script '" + script + "' Successfully executed");
         } catch (Exception e) {
           log.debug("Error occured while executing " + script + "on VNFC" + vnfrName);
@@ -515,8 +513,13 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     return res;
   }
 
-  /*
-   * Prepares the script with runtime variable available in 'vnfr/runTimeEnvironment' file*/
+  /**
+   * Prepares the script with runtime variable available in 'vnfr/runTimeEnvironment' file
+   *
+   * @param scriptPath = Path of the current script in the container
+   * @param vnfrName = Name of the VNFR
+   * @return Updated script including runtime environments
+   */
   private void prepareScriptWithRunTimeEnv(String vnfrName, String scriptPath) throws IOException {
     String filePath = "/tmp/openbaton/dockerVNFM/" + vnfrName + "/runTimeEnvironment";
     List<String> readLines = Files.readAllLines(Paths.get(filePath), Charset.forName("UTF-8"));
@@ -545,10 +548,13 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     }
   }
 
+  /**
+   * Writes runtime environment variables to 'vnfr/runTimeEnvironment' file
+   *
+   * @param env = Environmnet variables of the VNFR
+   * @param vnfrName = Name of the VNFR
+   */
   private void writeRunTimeEnvToFile(String vnfrName, List<String> env) {
-    Set<String> nonDuplicateEnvSet = new HashSet<String>(env);
-    env.clear();
-    env.addAll(nonDuplicateEnvSet);
     String filePath = "/tmp/openbaton/dockerVNFM/" + vnfrName + "/runTimeEnvironment";
     File runTimeEnvFile = new File(filePath);
     if (runTimeEnvFile.exists()) runTimeEnvFile.delete();
@@ -561,6 +567,13 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     }
   }
 
+  /**
+   * Reads the runtime environments from a file
+   *
+   * @param vnfrName = Name of the VNFR
+   * @return Map<String,String> where key = environment variable name value = environment variable
+   *     value
+   */
   private Map<String, String> getRuntimeEnvironmentFromFile(String vnfrName) throws IOException {
     Map<String, String> runTimeEnv = new HashMap<>();
     String filePath = "/tmp/openbaton/dockerVNFM/" + vnfrName + "/runTimeEnvironment";
@@ -579,9 +592,21 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     return runTimeEnv;
   }
 
+  /**
+   * Execute scripts with dependency on VNFC for lifecycle event
+   *
+   * @param dockerVimInstance = VimInstance for docker
+   * @param isDetachModeEabled = Boolean defines scripts should be running in detached or attached
+   *     mode
+   * @param virtualNetworkFunctionRecord = VirtualNetworkFunctionRecord of VNFR
+   * @param event = Current Lifecycle event of the VNFR
+   * @param dependency = VNFRecordDependency object for that VNFR
+   * @return Collection<String> containing the output generated by the script
+   */
   public Iterable<String> executeScriptsForEvent(
       VirtualNetworkFunctionRecord virtualNetworkFunctionRecord,
       Event event,
+      Boolean isDetachModeEabled,
       VNFRecordDependency dependency,
       VimInstance dockerVimInstance)
       throws Exception {
@@ -592,13 +617,8 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
 
     LifecycleEvent le =
         VnfmUtils.getLifecycleEvent(virtualNetworkFunctionRecord.getLifecycle_event(), event);
-    List<Server> servers = client.listServer(dockerVimInstance);
-    Server vnfcInstance = new Server();
-    for (Server server : servers) {
-      if (vnfrName.contains(server.getName())) {
-        vnfcInstance = server;
-      }
-    }
+
+    Map<String, String> tempEnvMap = getRuntimeEnvironmentFromFile(vnfrName);
 
     if (le != null) {
       for (String script : le.getLifecycle_events()) {
@@ -612,52 +632,51 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
                   + virtualNetworkFunctionRecord.getName());
         }
 
-        // runTimeEnvironment already filled in '...../openbaton/vnfrname/runTimeEnvironment' file.
-        // Native Ips and other parameters will be loaded from this file.
+        // Self parameters are already loaded from '...../openbaton/vnfrname/runTimeEnvironment' file.
         String scriptPath = "/tmp/openbaton/dockerVNFM/" + vnfrName + "/scripts/" + script;
-        Map<String, String> tempEnvMap = getRuntimeEnvironmentFromFile(vnfrName);
-        if (dependency.getParameters() != null) {
-          for (String sourceType : dependency.getParameters().keySet()) {
-            if (script.contains("_")) {
-              //Adding foreign parameters such as ip
-              log.debug("Fetching parameter from dependency of type: " + type);
-            }
+        if (dependency.getParameters().get(type) != null) {
+          //Adding foreign parameters such as ip
+          log.debug("Fetching parameters from dependency of type: " + type);
 
-            Map<String, String> parameters = dependency.getParameters().get(type).getParameters();
-            if (parameters.entrySet() != null) {
-              for (Map.Entry<String, String> param : parameters.entrySet()) {
-                log.info("adding param: " + type + "_" + param.getKey() + " = " + param.getValue());
-                tempEnvMap.put(type + "_" + param.getKey(), param.getValue());
-              }
-            }
+          Map<String, String> parameters = dependency.getParameters().get(type).getParameters();
+          //System.out.println("Parameter set for " + type + " : " + parameters.entrySet());
+          for (Map.Entry<String, String> param : parameters.entrySet()) {
+            log.info("adding param: " + type + "_" + param.getKey() + " = " + param.getValue());
+            tempEnvMap.put(type + "_" + param.getKey(), param.getValue());
           }
+        }
 
-          tempEnvMap = modifyUnsafeEnvVarNames(tempEnvMap);
-          for (String s : tempEnvMap.keySet()) {
+        tempEnvMap = modifyUnsafeEnvVarNames(tempEnvMap);
+        for (String s : tempEnvMap.keySet()) {
+          if (!env.contains(s + "=" + tempEnvMap.get(s))) {
             env.add(s + "=" + tempEnvMap.get(s));
           }
-          log.info("Environment Variables are: " + env);
-          writeRunTimeEnvToFile(vnfrName, env);
-          // Prepare the script with runtime environment variables
-          prepareScriptWithRunTimeEnv(vnfrName, scriptPath);
-          client.copyArchiveToContainer(dockerVimInstance, vnfrName, scriptPath, "/scripts/");
-          client.setEnvironmentVariable(dockerVimInstance, vnfrName, env);
-          //Thread.sleep(10);
+        }
+        log.info("Environment Variables are: " + env);
+        writeRunTimeEnvToFile(vnfrName, env);
+        // Prepare the script with runtime environment variables
+        prepareScriptWithRunTimeEnv(vnfrName, scriptPath);
+        client.copyArchiveToContainer(dockerVimInstance, vnfrName, scriptPath, "/scripts/");
 
-          try {
-            String scriptLocation = "/scripts/" + script;
-            client.execCommand(dockerVimInstance, vnfrName, scriptLocation);
-            log.info("Script '" + script + "' Successfully executed with dependency");
-          } catch (Exception e) {
-            log.debug("Error occured while executing " + script + "on VNFC" + vnfrName);
-            log.debug(e.toString());
-          }
+        try {
+          String scriptLocation = "/scripts/" + script;
+          client.execCommand(dockerVimInstance, vnfrName, isDetachModeEabled, scriptLocation);
+          log.info("Script '" + script + "' Successfully executed with dependency");
+        } catch (Exception e) {
+          log.debug("Error occured while executing " + script + "on VNFC" + vnfrName);
+          log.debug(e.toString());
         }
       }
     }
     return res;
   }
 
+  /**
+   * Prepare the scripts of a VNFD for further use
+   *
+   * @param vnfdName = Name of the VNFD
+   * @param vnfPackage = VNFPackage object for that particular VNFD
+   */
   private void prepareScript(VNFPackage vnfPackage, String vnfdName) throws IOException {
     (new File("/tmp/openbaton/dockerVNFM" + "/" + vnfdName + "/" + "scripts/")).mkdirs();
     if (vnfPackage.getScriptsLink() != null && !vnfPackage.getScriptsLink().equals("")) {
@@ -686,6 +705,12 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     }
   }
 
+  /**
+   * Get the scripts of a VNFD from a remote link
+   *
+   * @param vnfdName = Name of the VNFD
+   * @param scriptsLink = Remote link of the scripts
+   */
   private void getScriptsFromScriptsLink(String scriptsLink, String vnfdName) {
     log.info("Start fetching git repository from " + scriptsLink + " for VNFD " + vnfdName);
     ProcessBuilder pb =
@@ -714,6 +739,12 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     } else log.error("Could not fetch git repository");
   }
 
+  /**
+   * Get the environment variable list from configuration parameters
+   *
+   * @param configParameters = configuration paramter Map
+   * @return List of environmnet variables
+   */
   private List<String> getEnvironmentVariables(Map<String, String> configParameters) {
     List<String> environmentVariables = new ArrayList<>();
     for (String s : configParameters.keySet()) {
@@ -723,6 +754,13 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     return environmentVariables;
   }
 
+  /**
+   * Checks and validates the environment variables
+   *
+   * @param environmentVariables = List of environment variables
+   * @param filePath = location of the file that contains environment variables list
+   * @return Validated and update environment variable lists
+   */
   private List<String> updateEnvironmentVariablesFromFile(
       List<String> environmentVariables, String filePath) throws IOException {
     List<String> lines = Files.readAllLines(Paths.get(filePath), Charset.forName("UTF-8"));
@@ -736,6 +774,12 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     return environmentVariables;
   }
 
+  /**
+   * Modifies environment variables from VNFR
+   *
+   * @param virtualNetworkFunctionRecord = VNFR record for a VNF
+   * @return Updated environment varibales map
+   */
   private Map<String, String> getMap(VirtualNetworkFunctionRecord virtualNetworkFunctionRecord) {
     Map<String, String> res = new HashMap<>();
     for (ConfigurationParameter configurationParameter :
@@ -760,6 +804,12 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     return exposedPorts;
   }
 
+  /**
+   * Check and find the docker vim instance
+   *
+   * @param orVnfmInstantiateMessage = Instantiate message from NFVO for a VNF
+   * @return If found return VimInstance object for docker
+   */
   private VimInstance getDockerVimInstance(OrVnfmInstantiateMessage orVnfmInstantiateMessage) {
     VimInstance dockerVimInstance = null;
     Map<String, Collection<VimInstance>> vimInstances = orVnfmInstantiateMessage.getVimInstances();
@@ -775,14 +825,17 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
     return dockerVimInstance;
   }
 
+  /**
+   * Checks the enviroment variables for unusual characters
+   *
+   * @param env = Environment variables map
+   * @return Updated environment variables map
+   */
   private Map<String, String> modifyUnsafeEnvVarNames(Map<String, String> env) {
-
     Map<String, String> result = new HashMap<>();
-
     for (Map.Entry<String, String> entry : env.entrySet()) {
       result.put(entry.getKey().replaceAll("[^A-Za-z0-9_]", "_"), entry.getValue());
     }
-
     return result;
   }
 
