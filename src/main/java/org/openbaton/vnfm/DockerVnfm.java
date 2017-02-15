@@ -104,7 +104,7 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
    */
   @Override
   protected synchronized void onAction(NFVMessage message)
-      throws NotFoundException, BadFormatException {
+          throws NotFoundException, BadFormatException {
     VirtualNetworkFunctionRecord virtualNetworkFunctionRecord = null;
     NFVMessage nfvMessage = null;
     OrVnfmGenericMessage orVnfmGenericMessage;
@@ -234,7 +234,8 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
             nfvMessage = VnfmUtils.getNfvMessage(Action.INSTANTIATE, virtualNetworkFunctionRecord);
             log.info("Instantiated vnfr " + vnfd.getName());
           } else {
-            log.debug("Failed : No vimInstance of type docker found");
+            log.debug("Failed : No VimInstance of type docker found");
+            return;
           }
           break;
         case MODIFY:
