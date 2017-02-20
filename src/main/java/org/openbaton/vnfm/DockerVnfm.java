@@ -181,11 +181,12 @@ public class DockerVnfm extends AbstractVnfmSpringAmqp {
             FileSystemUtils.deleteRecursively(pathToVnfd);
 
             prepareScript(orVnfmInstantiateMessage.getVnfPackage(), vnfd.getName());
-            environmentVariables =
-                updateEnvironmentVariablesFromFile(
-                    environmentVariables,
-                    "/tmp/openbaton/dockerVNFM/" + vnfd.getName() + "/scripts/default_options");
-
+            try {
+              environmentVariables =
+                      updateEnvironmentVariablesFromFile(
+                              environmentVariables,
+                              "/tmp/openbaton/dockerVNFM/" + vnfd.getName() + "/scripts/default_options");
+            } catch (Exception ignore){}
             log.info("Creating server for VNFD " + vnfd.getName());
             Server server = null;
             try {
